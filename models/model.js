@@ -87,6 +87,19 @@ const Department = sequelize.define("Department", {
   }
 });
 
+const Group = sequelize.define("Group", {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true
+  }
+});
+
 Faculty.hasMany(User, { foreignKey: "facultyId" });
 User.belongsTo(Faculty, { foreignKey: "facultyId" });
 
@@ -95,4 +108,6 @@ User.belongsTo(Faculty, { foreignKey: "facultyId" });
 module.exports = { 
     User, 
     Faculty, 
-    Department };
+    Department,
+    Group
+  };
