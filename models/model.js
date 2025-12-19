@@ -103,6 +103,9 @@ const Group = sequelize.define("Group", {
 Faculty.hasMany(User, { foreignKey: "facultyId" });
 User.belongsTo(Faculty, { foreignKey: "facultyId" });
 
+Department.hasMany(User, { foreignKey: "departmentId" });
+User.belongsTo(Department, { foreignKey: "departmentId" });
+
 
 
 module.exports = { 
