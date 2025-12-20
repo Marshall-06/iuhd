@@ -18,6 +18,7 @@ app.use("/api/lesson", require("./routers/lessonRouter"))
 app.use("/api/assignment", require("./routers/leesonAssigmentRouter"))
 app.use("/api/teacher", require("./routers/teacherRouter"))
 app.use("/api/question", require("./routers/questionRouter"))
+app.use("/api/excel", require("./routers/excelRouter"))
 
 
 app.listen(PORT, ()=> {

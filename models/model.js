@@ -191,20 +191,6 @@ const Question = sequelize.define(
 );
 
 
-// Faculty.hasMany(User, { foreignKey: "facultyId" });
-// User.belongsTo(Faculty, { foreignKey: "facultyId" });
-
-// Department.hasMany(User, { foreignKey: "departmentId" });
-// User.belongsTo(Department, { foreignKey: "departmentId" });
-
-// User.hasMany(LessonAssignment, { foreignKey: "teacherId" });
-// LessonAssignment.belongsTo(User, { foreignKey: "teacherId" });
-
-// LessonAssignment.belongsTo(Lesson, { foreignKey: "lessonId" });
-// LessonAssignment.belongsTo(Group, { foreignKey: "groupId" });
-
-
-
 // Faculty & Department
 Faculty.hasMany(User, { foreignKey: "facultyId" });
 User.belongsTo(Faculty, { foreignKey: "facultyId" });

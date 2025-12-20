@@ -81,7 +81,6 @@ exports.getTeacherRatingSummary = async (req, res) => {
   try {
     const { teacherId } = req.params;
 
-    // Get teacher with faculty and department
     const teacher = await User.findOne({
       where: { id: teacherId, role: "teacher" },
       include: [
@@ -94,19 +93,16 @@ exports.getTeacherRatingSummary = async (req, res) => {
       return res.status(404).json({ message: "Teacher not found" });
     }
 
-    // Total ratings count
     const ratedNumbers = await TeacherRating.count({
       where: { teacherId }
     });
 
-    // Overall average score
     const overallRaw = await TeacherRating.findOne({
   where: { teacherId },
   attributes: [[sequelize.fn("AVG", sequelize.col("avg_score")), "overallAverage"]],
   raw: true
 });
 
-    // Average per lesson type
     const lessonTypesRaw = await TeacherRating.findAll({
   where: { teacherId },
   attributes: [
@@ -117,7 +113,6 @@ exports.getTeacherRatingSummary = async (req, res) => {
   raw: true
 });
 
-    // Format lesson types and convert averages to float with 2 decimals
     const lessonTypes = lessonTypesRaw.map(item => ({
   type: item.type,
   averageScore: parseFloat(item.averageScore || 0).toFixed(2)
