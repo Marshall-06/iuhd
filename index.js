@@ -10,6 +10,7 @@ app.get("/", (req, res)=> {
     res.send("Hello World!")
 })
 
+
 app.use('/api/auth',require("./routers/authRouter"))
 app.use("/api/faculty", require("./routers/facultyRouter"))
 app.use("/api/department", require("./routers/departmentRouter"))
