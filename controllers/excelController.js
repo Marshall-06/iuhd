@@ -1,81 +1,83 @@
 const ExcelJS = require("exceljs");
-const { User, Faculty, Department, TeacherRating } = require("../models/model"); 
+const { User, TeacherRating } = require("../models/model");
 const sequelize = require("../config/db");
 
 exports.exportTeacherRatingsToExcel = async (req, res) => {
   try {
-    // Fetch all teachers
     const teachers = await User.findAll({
       where: { role: "teacher" },
-      include: [
-        { model: Faculty, attributes: ["name"] },
-        { model: Department, attributes: ["name"] }
-      ]
+      attributes: ["id", "Name", "Surname"]
     });
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Teacher Ratings");
 
-    // Add headers
+    // Excel columns
     worksheet.columns = [
       { header: "Name", key: "name", width: 20 },
       { header: "Surname", key: "surname", width: 20 },
-      { header: "Faculty", key: "faculty", width: 25 },
-      { header: "Department", key: "department", width: 25 },
       { header: "Rated Numbers", key: "ratedNumbers", width: 15 },
-      { header: "Lesson Type", key: "lessonType", width: 20 },
-      { header: "Average Score", key: "averageScore", width: 15 },
-      { header: "Overall Average", key: "overallAverage", width: 15 }
+      { header: "Lecture", key: "lecture", width: 12 },
+      { header: "Practice", key: "practice", width: 12 },
+      { header: "Seminar", key: "seminar", width: 12 },
+      { header: "Overall Average", key: "overall", width: 15 }
     ];
 
-    // Loop through each teacher
     for (const teacher of teachers) {
-      const ratedNumbers = await TeacherRating.count({
-        where: { teacherId: teacher.id }
-      });
+      const ratedNumbers = await TeacherRating.count({ where: { teacherId: teacher.id } });
 
-      const overallRaw = await TeacherRating.findOne({
-        where: { teacherId: teacher.id },
-        attributes: [[sequelize.fn("AVG", sequelize.col("avg_score")), "overallAverage"]],
-        raw: true
-      });
+      // Initialize scores to 0
+      const scores = { lecture: 0, practice: 0, seminar: 0 };
 
-      const lessonTypesRaw = await TeacherRating.findAll({
+      // Get averages for each lesson type
+      const ratings = await TeacherRating.findAll({
         where: { teacherId: teacher.id },
-        attributes: ["type", [sequelize.fn("AVG", sequelize.col("avg_score")), "averageScore"]],
+        attributes: [
+          "type",
+          [sequelize.fn("AVG", sequelize.col("avg_score")), "avgScore"]
+        ],
         group: ["type"],
         raw: true
       });
 
-      const overallAverage = parseFloat(overallRaw?.overallAverage || 0).toFixed(2);
+      ratings.forEach(r => {
+        if (r.type && r.avgScore !== null) {
+          scores[r.type] = parseFloat(r.avgScore);
+        }
+      });
 
-      // Add one row per lesson type
-      for (const lesson of lessonTypesRaw) {
-        worksheet.addRow({
-          name: teacher.Name || teacher.name,
-          surname: teacher.Surname || teacher.surname,
-          faculty: teacher.Faculty?.name || "",
-          department: teacher.Department?.name || "",
-          ratedNumbers,
-          lessonType: lesson.type,
-          averageScore: parseFloat(lesson.averageScore).toFixed(2),
-          overallAverage
-        });
-      }
+      // Calculate overall average (only for types that have ratings)
+      const ratedTypes = Object.values(scores).filter(v => v > 0);
+      const overall = ratedTypes.length > 0
+        ? ratedTypes.reduce((a, b) => a + b, 0) / ratedTypes.length
+        : 0;
+
+      worksheet.addRow({
+        name: teacher.Name,
+        surname: teacher.Surname,
+        ratedNumbers,
+        lecture: scores.lecture.toFixed(2),
+        practice: scores.practice.toFixed(2),
+        seminar: scores.seminar.toFixed(2),
+        overall: overall.toFixed(2)
+      });
     }
 
-    // Send Excel file as response
+    // Unique filename to avoid Windows lock
+    const fileName = `teacher_ratings_${Date.now()}.xlsx`;
+
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
     res.setHeader(
       "Content-Disposition",
-      "attachment; filename=teacher_ratings.xlsx"
+      `attachment; filename=${fileName}`
     );
 
     await workbook.xlsx.write(res);
     res.end();
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });

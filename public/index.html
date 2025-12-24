@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rate Teacher</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f0f2f5; }
+  .container { max-width: 700px; margin: 50px auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+  h1 { text-align: center; color: #333; }
+  label { display: block; margin-top: 15px; font-weight: bold; }
+  select { width: 100%; padding: 10px; margin-top: 5px; border-radius: 6px; border: 1px solid #ccc; }
+  button { width: 100%; padding: 12px; margin-top: 20px; border-radius: 8px; border: none; cursor: pointer; background: #007bff; color: white; font-size: 16px; }
+  button:hover { background: #0056b3; }
+  #questionsContainer div { margin-bottom: 10px; }
+  .success { color: green; text-align: center; margin-top: 10px; }
+  .error { color: red; text-align: center; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Rate Your Teacher</h1>
+  <form id="rateForm">
+    <label for="groupSelect">Select Group</label>
+    <select id="groupSelect" required><option>Loading groups...</option></select>
+
+    <label for="teacherSelect">Select Teacher</label>
+    <select id="teacherSelect" required><option>Select group first</option></select>
+
+    <label for="subjectSelect">Select Lesson Type</label>
+    <select id="subjectSelect" required><option>Select teacher first</option></select>
+
+    <div id="questionsContainer"><p>Loading questions...</p></div>
+
+    <button type="submit">Submit Rating</button>
+  </form>
+  <p id="message" class="success"></p>
+  <p id="error" class="error"></p>
+</div>
+
+<script>
+const API_URL = "http://localhost:5000/api";
+
+const groupSelect = document.getElementById("groupSelect");
+const teacherSelect = document.getElementById("teacherSelect");
+const subjectSelect = document.getElementById("subjectSelect");
+const questionsContainer = document.getElementById("questionsContainer");
+const rateForm = document.getElementById("rateForm");
+const messageEl = document.getElementById("message");
+const errorEl = document.getElementById("error");
+
+// Load groups
+async function loadGroups() {
+  try {
+    const res = await fetch(`${API_URL}/group/all`);
+    const data = await res.json();
+    groupSelect.innerHTML = '<option value="">Select Group</option>';
+    data.groups.forEach(g => {
+      const opt = document.createElement("option");
+      opt.value = g.id;
+      opt.textContent = g.name;
+      groupSelect.appendChild(opt);
+    });
+  } catch {
+    groupSelect.innerHTML = '<option value="">Failed to load groups</option>';
+  }
+}
+
+// Load teachers for group
+groupSelect.addEventListener("change", async () => {
+  const groupId = groupSelect.value;
+  teacherSelect.innerHTML = '<option>Loading teachers...</option>';
+  subjectSelect.innerHTML = '<option>Select teacher first</option>';
+  questionsContainer.innerHTML = '';
+  if (!groupId) return;
+
+  try {
+    const res = await fetch(`${API_URL}/teacher/group/${groupId}`);
+    const data = await res.json();
+    teacherSelect.innerHTML = '<option value="">Select Teacher</option>';
+    data.forEach(t => {
+      const opt = document.createElement("option");
+      opt.value = t.teacherId;
+      opt.textContent = t.name + " " + t.surname;
+      opt.dataset.lessonTypes = JSON.stringify(t.lessonTypes || []);
+      teacherSelect.appendChild(opt);
+    });
+  } catch {
+    teacherSelect.innerHTML = '<option value="">Failed to load teachers</option>';
+  }
+});
+
+// Load lesson types for teacher
+teacherSelect.addEventListener("change", () => {
+  const selected = teacherSelect.selectedOptions[0];
+  const lessonTypes = selected ? JSON.parse(selected.dataset.lessonTypes) : [];
+  subjectSelect.innerHTML = '<option value="">Select Lesson Type</option>';
+  lessonTypes.forEach(type => {
+    const opt = document.createElement("option");
+    opt.value = type;
+    opt.textContent = type;
+    subjectSelect.appendChild(opt);
+  });
+  questionsContainer.innerHTML = '';
+});
+
+// Load questions with dropdown choices
+subjectSelect.addEventListener("change", async () => {
+  try {
+    const res = await fetch(`${API_URL}/question/all`);
+    const questions = await res.json();
+    questionsContainer.innerHTML = '';
+
+    questions.forEach(q => {
+      const div = document.createElement("div");
+      div.innerHTML = `
+        <label>${q.text}</label>
+        <select data-id="${q.id}" required>
+          <option value="">Select</option>
+          <option value="5">5: Always</option>
+          <option value="4">4: Often</option>
+          <option value="3">3: To the level of 50%</option>
+          <option value="2">2: Rarely</option>
+          <option value="1">1: Never</option>
+        </select>
+      `;
+      questionsContainer.appendChild(div);
+    });
+  } catch {
+    questionsContainer.innerHTML = '<p>Failed to load questions</p>';
+  }
+});
+
+// Submit rating
+rateForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  messageEl.textContent = '';
+  errorEl.textContent = '';
+
+  const teacherId = teacherSelect.value;
+  const groupId = groupSelect.value;
+  const type = subjectSelect.value;
+
+  if (!teacherId || !groupId || !type) {
+    errorEl.textContent = 'Please select group, teacher, and lesson type.';
+    return;
+  }
+
+  const answers = [];
+  const inputs = document.querySelectorAll("#questionsContainer select");
+  for (const input of inputs) {
+    const value = Number(input.value);
+    if (!value || value < 1 || value > 5) {
+      errorEl.textContent = 'Please answer all questions';
+      return;
+    }
+    answers.push({ questionId: input.dataset.id, value });
+  }
+
+  try {
+    const res = await fetch(`${API_URL}/teacher/rate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teacherId, groupId, type, answers })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      messageEl.textContent = data.message || 'Rating submitted successfully';
+      rateForm.reset();
+      teacherSelect.innerHTML = '<option value="">Select group first</option>';
+      subjectSelect.innerHTML = '<option value="">Select teacher first</option>';
+      questionsContainer.innerHTML = '';
+    } else {
+      errorEl.textContent = data.message || 'Failed to submit rating';
+    }
+  } catch {
+    errorEl.textContent = 'Server error, try again later';
+  }
+});
+
+// Initialize
+loadGroups();
+</script>
+</body>
+</html>

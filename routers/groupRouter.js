@@ -4,10 +4,10 @@ const controller = require("../controllers/groupController")
 const { authMiddleware, adminOnly } = require("../middlewares/authMiddleware");
 
 
-router.post("/create", authMiddleware, adminOnly, controller.createGroup);
-router.get("/all", authMiddleware, controller.getAllGroups);
-router.get("/:id", authMiddleware, controller.getGroupById);
-router.put("/update/:id", authMiddleware, adminOnly, controller.updateGroup);
-router.delete("/delete/:id", authMiddleware, adminOnly, controller.deleteGroup);
+router.post("/create",  controller.createGroup);
+router.get("/all", controller.getAllGroups);
+router.get("/:id",   controller.getGroupById);
+router.put("/update/:id",  controller.updateGroup);
+router.delete("/delete/:id",  controller.deleteGroup);
 
 module.exports = router;

@@ -24,15 +24,15 @@ exports.register = async (req, res) => {
 
     // TEACHER → needs email + password + other info
     if (role === "teacher") {
-      const {  Name, Surname, facultyId, departmentId, groupId } = req.body;
+      const {  Name, Surname,  
+        // groupId
+      } = req.body;
 
       const teacher = await User.create({
         role,
         Name,
         Surname,
-        facultyId,
-        departmentId,
-        groupId
+        // groupId
       });
 
       return res.status(201).json({ message: "Teacher registered", teacher });
@@ -57,23 +57,6 @@ exports.register = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
-// exports.studentRegister = async (req, res) => {
-//   try{
-//     const { role,studentId } = req.body;
-
-//     if (!studentId) {
-//       return res.status(400).json({ message: "studentId is required for student" });
-//     }
-
-//     const student = await User.create({ role, studentId});
-//     return res.status(201).json({ message: "Student registered", student});
-//   } catch (err){
-//     res.status(500).json({ error: err.message});
-//   }
-// }
-
-
 
 exports.adminLogin = async (req, res) => {
   const { email, password } = req.body;

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Assign Teacher</title>
+<style>
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f6fa; }
+  .container { max-width: 600px; margin: 50px auto; background: #fff; padding: 30px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+  h1 { text-align: center; color: #333; margin-bottom: 25px; }
+  label { display: block; margin-top: 15px; font-weight: 600; }
+  select, button { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; }
+  button { background: #007bff; color: white; border: none; cursor: pointer; transition: 0.3s; }
+  button:hover { background: #0056b3; }
+  .checkbox-group { display: flex; justify-content: space-between; margin-top: 10px; }
+  .checkbox-group label { font-weight: normal; }
+  .success { color: #2ecc71; font-weight: bold; margin-top: 15px; }
+  .error { color: #e74c3c; font-weight: bold; margin-top: 15px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Assign Teacher to Group</h1>
+
+  <label for="groupSelect">Select Group</label>
+  <select id="groupSelect">
+    <option value="">Loading groups...</option>
+  </select>
+
+  <label for="teacherSelect">Select Teacher</label>
+  <select id="teacherSelect">
+    <option value="">Select group first</option>
+  </select>
+
+  <label>Select Lesson Types</label>
+  <div class="checkbox-group">
+    <label><input type="checkbox" value="lecture" class="lessonType"> Lecture</label>
+    <label><input type="checkbox" value="seminar" class="lessonType"> Seminar</label>
+    <label><input type="checkbox" value="practice" class="lessonType"> Practice</label>
+  </div>
+
+  <button id="assignBtn">Assign</button>
+  <p id="message" class="success"></p>
+  <p id="error" class="error"></p>
+</div>
+
+<script>
+// const API_URL = "http://localhost:5000/api"; // backend URL
+// const token = localStorage.getItem("token"); // add if you have auth
+const API_URL = "http://localhost:5000/api"; // replace with your API
+
+
+const groupSelect = document.getElementById("groupSelect");
+const teacherSelect = document.getElementById("teacherSelect");
+const assignBtn = document.getElementById("assignBtn");
+const messageEl = document.getElementById("message");
+const errorEl = document.getElementById("error");
+
+// --- Load Groups ---
+async function loadGroups() {
+  try {
+    const res = await fetch(`${API_URL}/group/all`);
+    const data = await res.json();
+    groupSelect.innerHTML = '<option value="">Select Group</option>';
+    data.groups.forEach(g => {
+      const opt = document.createElement("option");
+      opt.value = g.id;
+      opt.textContent = g.name;
+      groupSelect.appendChild(opt);
+    });
+  } catch {
+    groupSelect.innerHTML = '<option value="">Failed to load groups</option>';
+  }
+}
+
+// --- Load Teachers by Group ---
+groupSelect.addEventListener("change", async () => {
+  const groupId = groupSelect.value;
+  teacherSelect.innerHTML = '<option value="">Loading teachers...</option>';
+  if (!groupId) {
+    teacherSelect.innerHTML = '<option value="">Select group first</option>';
+    return;
+  }
+  try {
+    const res = await fetch(`${API_URL}/teacher/group/${groupId}`);
+    const data = await res.json();
+    teacherSelect.innerHTML = '<option value="">Select Teacher</option>';
+    data.forEach(t => {
+      const opt = document.createElement("option");
+      opt.value = t.teacherId;
+      opt.textContent = t.name + " " + t.surname;
+      teacherSelect.appendChild(opt);
+    });
+  } catch {
+    teacherSelect.innerHTML = '<option value="">Failed to load teachers</option>';
+  }
+});
+
+// --- Assign Teacher ---
+assignBtn.addEventListener("click", async () => {
+  messageEl.textContent = "";
+  errorEl.textContent = "";
+
+  const groupId = groupSelect.value;
+  const teacherId = teacherSelect.value;
+  const lessonTypes = Array.from(document.querySelectorAll(".lessonType:checked")).map(c => c.value);
+
+  if (!groupId || !teacherId) { errorEl.textContent = "Select group and teacher"; return; }
+  if (!lessonTypes.length) { errorEl.textContent = "Select at least one lesson type"; return; }
+
+  try {
+    const res = await fetch(`${API_URL}/assignment/assign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teacherId, groupId, types: lessonTypes })
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      messageEl.textContent = data.message || "Teacher assigned successfully!";
+    } else {
+      errorEl.textContent = data.message || "Failed to assign teacher";
+    }
+
+  } catch (err) {
+    errorEl.textContent = "Server error";
+  }
+});
+
+// --- Initial Load ---
+loadGroups();
+</script>
+</body>
+</html>
